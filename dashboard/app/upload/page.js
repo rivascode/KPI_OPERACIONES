@@ -14,6 +14,7 @@ export default function UploadPage() {
   const [results, setResults] = useState([]);
 
   useEffect(() => {
+    document.title = "Importar Reportes - KPI Control";
     const kpiDb = new KPIDatabase();
     kpiDb.init().then(() => {
       setDb(kpiDb);

@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [selectedColabForChart, setSelectedColabForChart] = useState('all');
 
   useEffect(() => {
+    document.title = "KPI Control Operaciones";
     const initDb = async () => {
       try {
         const kpiDb = new KPIDatabase();
