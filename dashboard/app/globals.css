@@ -115,8 +115,6 @@ body {
 }
 
 .filter-group select {
-  width: 100%;
-  max-width: 100%;
   padding: 0.75rem 1rem;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--card-border);
@@ -506,25 +504,5 @@ body {
   }
   .header h1 {
     font-size: 1.5rem;
-  }
-}
-
-/* Colaborador selector group responsive styling */
-.colab-selector-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-@media (max-width: 640px) {
-  .colab-selector-group {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .colab-selector-group select {
-    flex: 1;
-    min-width: 150px;
-    width: 100%;
   }
 }

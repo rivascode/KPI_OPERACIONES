@@ -87,13 +87,11 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && o.fecha) {
         const d = new Date(o.fecha);
-        const month = d.getMonth(); // 3 = Abril, 4 = Mayo
-        const year = d.getFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
+        const now = new Date('2026-06-01');
+        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+        if (dateRange === '30') matchDate = diffDays <= 30;
+        if (dateRange === '60') matchDate = diffDays <= 60;
+        if (dateRange === '90') matchDate = diffDays <= 90;
       }
       return matchOperador && matchCliente && matchColaborador && matchTipo && matchPuerto && matchSede && matchDate;
     });
@@ -110,13 +108,11 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && m.fecha) {
         const d = new Date(m.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
+        const now = new Date('2026-06-01');
+        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+        if (dateRange === '30') matchDate = diffDays <= 30;
+        if (dateRange === '60') matchDate = diffDays <= 60;
+        if (dateRange === '90') matchDate = diffDays <= 90;
       }
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
@@ -133,13 +129,11 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && v.fecha) {
         const d = new Date(v.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
+        const now = new Date('2026-06-01');
+        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+        if (dateRange === '30') matchDate = diffDays <= 30;
+        if (dateRange === '60') matchDate = diffDays <= 60;
+        if (dateRange === '90') matchDate = diffDays <= 90;
       }
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
@@ -154,13 +148,11 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && i.fecha) {
         const d = new Date(i.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
+        const now = new Date('2026-06-01');
+        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
+        if (dateRange === '30') matchDate = diffDays <= 30;
+        if (dateRange === '60') matchDate = diffDays <= 60;
+        if (dateRange === '90') matchDate = diffDays <= 90;
       }
       return matchOperador && matchCliente && matchDate;
     });
@@ -494,8 +486,9 @@ export default function Dashboard() {
           <label>Rango de Fecha</label>
           <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
             <option value="all">Todo el Histórico</option>
-            <option value="abril">Abril 2026</option>
-            <option value="mayo">Mayo 2026</option>
+            <option value="30">Últimos 30 días</option>
+            <option value="60">Últimos 60 días</option>
+            <option value="90">Últimos 90 días</option>
           </select>
         </div>
 
@@ -864,14 +857,14 @@ export default function Dashboard() {
             </p>
           </div>
           
-          <div className="colab-selector-group">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desglosar Colaborador:</span>
             <select 
               value={selectedColabForChart} 
               onChange={(e) => setSelectedColabForChart(e.target.value)}
               style={{
                 padding: '0.4rem 0.8rem',
-                background: 'rgba(255, 255, 255, 0.9)',
+                background: 'rgba(8, 12, 20, 0.7)',
                 border: '1px solid var(--card-border)',
                 borderRadius: '8px',
                 color: 'var(--text-main)',
