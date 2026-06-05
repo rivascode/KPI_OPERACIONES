@@ -241,7 +241,7 @@ export default function UploadPage() {
             return {
               id: Math.random().toString(36).substr(2, 9),
               origen: 'Facturacion',
-              fecha: parseDate(getVal('FECHA DE REG. DEL BK') || getVal('FECHA DE NUMERACION')),
+              fecha: parseDate(getVal('FECHA ENVIO DF')),
               colaborador: reassignLuisEsteban(rawColab, rawOp),
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('EMBARCADOR') ? getVal('EMBARCADOR').toString().trim().toUpperCase() : 'NO DEFINIDO',
@@ -283,7 +283,7 @@ export default function UploadPage() {
             return {
               id: Math.random().toString(36).substr(2, 9),
               origen: 'Aereos',
-              fecha: parseDate(getVal('FECHA REGISTRO')),
+              fecha: parseDate(getVal('DATOS FINALES')),
               colaborador: reassignLuisEsteban(rawColab, rawOp),
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('SHIPPER') ? getVal('SHIPPER').toString().trim().toUpperCase() : 'NO DEFINIDO',
@@ -307,7 +307,7 @@ export default function UploadPage() {
             return {
               id: Math.random().toString(36).substr(2, 9),
               origen: 'Terrestres',
-              fecha: parseDate(getVal('FECHA REGISTRO') || getVal('FECHA')),
+              fecha: parseDate(getVal('FECHA REGISTRO')),
               colaborador: reassignLuisEsteban(rawColab, rawOp),
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('EXPORTADOR') ? getVal('EXPORTADOR').toString().trim().toUpperCase() : 'NO DEFINIDO',

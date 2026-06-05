@@ -223,7 +223,7 @@ async function processAllReports() {
                     if (!rawOp && !getVal('SHIPPER')) return;
                     operaciones.push({
                         origen: 'Aereos',
-                        fecha: parseDate(getVal('FECHA REGISTRO')),
+                        fecha: parseDate(getVal('DATOS FINALES')),
                         colaborador: rawColab,
                         operador: rawOp,
                         cliente: getVal('SHIPPER'),
@@ -245,7 +245,7 @@ async function processAllReports() {
                     if (!rawColab && !getVal('EXPORTADOR')) return;
                     operaciones.push({
                         origen: 'Terrestres',
-                        fecha: parseDate(getVal('FECHA REGISTRO') || getVal('FECHA')),
+                        fecha: parseDate(getVal('FECHA REGISTRO')),
                         colaborador: rawColab,
                         operador: rawOp,
                         cliente: getVal('EXPORTADOR'),
