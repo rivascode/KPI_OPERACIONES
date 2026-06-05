@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+dashboard/node_modules/
+
+# Next.js build output
+dashboard/.next/
+dashboard/out/
+
+# IDE / OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Local logs
+*.log
