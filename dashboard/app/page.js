@@ -87,11 +87,13 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && o.fecha) {
         const d = new Date(o.fecha);
-        const now = new Date('2026-06-01');
-        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
-        if (dateRange === '30') matchDate = diffDays <= 30;
-        if (dateRange === '60') matchDate = diffDays <= 60;
-        if (dateRange === '90') matchDate = diffDays <= 90;
+        const month = d.getMonth(); // 3 = Abril, 4 = Mayo
+        const year = d.getFullYear();
+        if (dateRange === 'abril') {
+          matchDate = (month === 3 && year === 2026);
+        } else if (dateRange === 'mayo') {
+          matchDate = (month === 4 && year === 2026);
+        }
       }
       return matchOperador && matchCliente && matchColaborador && matchTipo && matchPuerto && matchSede && matchDate;
     });
@@ -108,11 +110,13 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && m.fecha) {
         const d = new Date(m.fecha);
-        const now = new Date('2026-06-01');
-        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
-        if (dateRange === '30') matchDate = diffDays <= 30;
-        if (dateRange === '60') matchDate = diffDays <= 60;
-        if (dateRange === '90') matchDate = diffDays <= 90;
+        const month = d.getMonth();
+        const year = d.getFullYear();
+        if (dateRange === 'abril') {
+          matchDate = (month === 3 && year === 2026);
+        } else if (dateRange === 'mayo') {
+          matchDate = (month === 4 && year === 2026);
+        }
       }
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
@@ -129,11 +133,13 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && v.fecha) {
         const d = new Date(v.fecha);
-        const now = new Date('2026-06-01');
-        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
-        if (dateRange === '30') matchDate = diffDays <= 30;
-        if (dateRange === '60') matchDate = diffDays <= 60;
-        if (dateRange === '90') matchDate = diffDays <= 90;
+        const month = d.getMonth();
+        const year = d.getFullYear();
+        if (dateRange === 'abril') {
+          matchDate = (month === 3 && year === 2026);
+        } else if (dateRange === 'mayo') {
+          matchDate = (month === 4 && year === 2026);
+        }
       }
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
@@ -148,11 +154,13 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && i.fecha) {
         const d = new Date(i.fecha);
-        const now = new Date('2026-06-01');
-        const diffDays = (now - d) / (1000 * 60 * 60 * 24);
-        if (dateRange === '30') matchDate = diffDays <= 30;
-        if (dateRange === '60') matchDate = diffDays <= 60;
-        if (dateRange === '90') matchDate = diffDays <= 90;
+        const month = d.getMonth();
+        const year = d.getFullYear();
+        if (dateRange === 'abril') {
+          matchDate = (month === 3 && year === 2026);
+        } else if (dateRange === 'mayo') {
+          matchDate = (month === 4 && year === 2026);
+        }
       }
       return matchOperador && matchCliente && matchDate;
     });
@@ -500,12 +508,11 @@ export default function Dashboard() {
       {/* Filters Panel */}
       <div className="filters-panel">
         <div className="filter-group">
-          <label>Rango de Fecha</label>
+          <label>Mes</label>
           <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
             <option value="all">Todo el Histórico</option>
-            <option value="30">Últimos 30 días</option>
-            <option value="60">Últimos 60 días</option>
-            <option value="90">Últimos 90 días</option>
+            <option value="abril">Abril 2026</option>
+            <option value="mayo">Mayo 2026</option>
           </select>
         </div>
 
