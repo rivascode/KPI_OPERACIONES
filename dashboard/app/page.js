@@ -596,10 +596,10 @@ export default function Dashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={matricesVgmTotalsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
                 <YAxis stroke="var(--text-muted)" fontSize={11} />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-emerald)" radius={[8, 8, 0, 0]} barSize={50}>
                   {matricesVgmTotalsData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={MATRICES_VGM_COLORS[index % MATRICES_VGM_COLORS.length]} />
@@ -622,7 +622,7 @@ export default function Dashboard() {
                 layout="vertical"
                 margin={{ top: 10, right: 10, left: 30, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} />
                 <YAxis 
                   dataKey="name" 
@@ -632,7 +632,7 @@ export default function Dashboard() {
                   width={140}
                   tickFormatter={(val) => val.length > 20 ? `${val.substring(0, 18)}...` : val}
                 />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{fontSize: 12}} />
                 <Bar dataKey="Matrices" fill="#06b6d4" stackId="a" radius={[0, 0, 0, 0]} barSize={16} />
                 <Bar dataKey="VGM" fill="#10b981" stackId="a" radius={[0, 8, 8, 0]} barSize={16} />
@@ -663,10 +663,10 @@ export default function Dashboard() {
                     <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
                 <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Area type="monotone" dataKey="Operaciones" stroke="var(--accent-blue)" strokeWidth={2} fillOpacity={1} fill="url(#gradientBlue)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -694,7 +694,7 @@ export default function Dashboard() {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Legend iconSize={8} iconType="circle" wrapperStyle={{fontSize: 11, color: 'var(--text-muted)'}} />
               </PieChart>
             </ResponsiveContainer>
@@ -709,10 +709,10 @@ export default function Dashboard() {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={maritimeSub1Data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-blue)" radius={[6, 6, 0, 0]} barSize={25}>
                   {maritimeSub1Data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={SUB_COLORS[index % SUB_COLORS.length]} />
@@ -744,7 +744,7 @@ export default function Dashboard() {
                     <Cell key={`cell-${index}`} fill={DRY_REEFER_COLORS[index % DRY_REEFER_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Legend iconSize={8} iconType="circle" wrapperStyle={{fontSize: 11, color: 'var(--text-muted)'}} />
               </PieChart>
             </ResponsiveContainer>
@@ -766,7 +766,7 @@ export default function Dashboard() {
                 layout="vertical" 
                 margin={{ top: 10, right: 40, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -776,7 +776,7 @@ export default function Dashboard() {
                   width={140}
                   tickFormatter={(val) => val.length > 22 ? `${val.substring(0, 19)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-purple)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {operatorChartData.map((entry, index) => (
@@ -800,7 +800,7 @@ export default function Dashboard() {
                 layout="vertical" 
                 margin={{ top: 10, right: 40, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -810,7 +810,7 @@ export default function Dashboard() {
                   width={140}
                   tickFormatter={(val) => val.length > 22 ? `${val.substring(0, 19)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-emerald)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {exporterChartData.map((entry, index) => (
@@ -863,10 +863,10 @@ export default function Dashboard() {
           {selectedColabForChart === 'all' ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={collaboratorChartData.chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)' }} />
                 {collaboratorChartData.keys.map((key, index) => (
                   <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
@@ -880,7 +880,7 @@ export default function Dashboard() {
                 layout="vertical"
                 margin={{ top: 10, right: 45, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -890,7 +890,7 @@ export default function Dashboard() {
                   width={160}
                   tickFormatter={(val) => val.length > 25 ? `${val.substring(0, 22)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#0f172a', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-blue)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {colabSubChartData.map((entry, index) => (

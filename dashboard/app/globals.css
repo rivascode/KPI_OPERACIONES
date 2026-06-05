@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-color: #080c14;
-  --card-bg: rgba(17, 24, 39, 0.7);
-  --card-hover: rgba(24, 34, 54, 0.8);
-  --card-border: rgba(255, 255, 255, 0.05);
-  --card-border-hover: rgba(59, 130, 246, 0.3);
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
+  --bg-color: #f1f5f9;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-hover: rgba(255, 255, 255, 0.95);
+  --card-border: rgba(0, 0, 0, 0.05);
+  --card-border-hover: rgba(59, 130, 246, 0.25);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
   
-  /* Vibrant Accents */
+  /* Vibrant Pastel Accents */
   --accent-blue: #3b82f6;
   --accent-purple: #8b5cf6;
   --accent-emerald: #10b981;
@@ -33,8 +33,8 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.07) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.07) 0%, transparent 40%);
   background-attachment: fixed;
   overflow-x: hidden;
 }
@@ -48,11 +48,11 @@ body {
   background: var(--bg-color);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* Layout */
@@ -74,7 +74,7 @@ body {
 .header h1 {
   font-size: 2.2rem;
   font-weight: 700;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -97,7 +97,7 @@ body {
   border-radius: 20px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
 }
 
 .filter-group {
@@ -116,7 +116,7 @@ body {
 
 .filter-group select {
   padding: 0.75rem 1rem;
-  background: rgba(8, 12, 20, 0.7);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--card-border);
   border-radius: 12px;
   color: var(--text-main);
@@ -129,11 +129,11 @@ body {
 
 .filter-group select:focus {
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .filter-group select option {
-  background: #0f172a;
+  background: #ffffff;
   color: var(--text-main);
 }
 
@@ -158,14 +158,14 @@ body {
   -webkit-backdrop-filter: blur(20px);
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
 }
 
 .kpi-card:hover {
   transform: translateY(-4px);
   background: var(--card-hover);
   border-color: var(--card-border-hover);
-  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.05);
 }
 
 .kpi-title {
@@ -194,7 +194,6 @@ body {
 }
 
 /* Charts Section */
-/* Grid Layout Rows */
 .charts-row-4 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -216,7 +215,7 @@ body {
   padding: 1.5rem;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
   min-height: 380px;
   display: flex;
   flex-direction: column;
@@ -226,7 +225,6 @@ body {
   min-height: 560px;
 }
 
-/* Spanned chart card */
 .chart-card.full-width {
   grid-column: 1 / -1;
   min-height: 400px;
@@ -255,7 +253,7 @@ body {
   border-radius: 24px;
   padding: 2rem;
   margin-top: 1.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
 }
 
 .table-wrapper {
@@ -274,7 +272,7 @@ body {
   padding: 1rem;
   font-weight: 600;
   color: var(--text-muted);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
@@ -282,20 +280,20 @@ body {
 
 .data-table td {
   padding: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
   color: var(--text-main);
 }
 
 .data-table tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.01);
 }
 
 /* Modal Styling */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(5, 8, 15, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -304,8 +302,8 @@ body {
 }
 
 .modal-content {
-  background: #0f1626;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.05);
   border-radius: 24px;
   width: 100%;
   max-width: 1100px;
@@ -313,7 +311,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 2.25rem;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
   position: relative;
   animation: modalEntrance 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -334,14 +332,14 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   padding-bottom: 1rem;
 }
 
 .modal-title {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .modal-close {
@@ -359,7 +357,7 @@ body {
 
 .modal-close:hover {
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .modal-body {
@@ -377,10 +375,11 @@ body {
   font-weight: 600;
   text-transform: uppercase;
 }
-.badge-blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-.badge-purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-.badge-emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-.badge-amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.badge-blue { background: rgba(59, 130, 246, 0.1); color: #2563eb; }
+.badge-purple { background: rgba(139, 92, 246, 0.1); color: #7c3aed; }
+.badge-emerald { background: rgba(16, 185, 129, 0.1); color: #059669; }
+.badge-amber { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+.badge-rose { background: rgba(244, 63, 94, 0.1); color: #e11d48; }
 
 /* Responsive adjustments */
 @media (max-width: 1024px) {
