@@ -87,8 +87,8 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && o.fecha) {
         const d = new Date(o.fecha);
-        const month = d.getMonth(); // 3 = Abril, 4 = Mayo
-        const year = d.getFullYear();
+        const month = d.getUTCMonth(); // 3 = Abril, 4 = Mayo
+        const year = d.getUTCFullYear();
         if (dateRange === 'abril') {
           matchDate = (month === 3 && year === 2026);
         } else if (dateRange === 'mayo') {
@@ -110,8 +110,8 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && m.fecha) {
         const d = new Date(m.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
+        const month = d.getUTCMonth();
+        const year = d.getUTCFullYear();
         if (dateRange === 'abril') {
           matchDate = (month === 3 && year === 2026);
         } else if (dateRange === 'mayo') {
@@ -133,8 +133,8 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && v.fecha) {
         const d = new Date(v.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
+        const month = d.getUTCMonth();
+        const year = d.getUTCFullYear();
         if (dateRange === 'abril') {
           matchDate = (month === 3 && year === 2026);
         } else if (dateRange === 'mayo') {
@@ -154,8 +154,8 @@ export default function Dashboard() {
       let matchDate = true;
       if (dateRange !== 'all' && i.fecha) {
         const d = new Date(i.fecha);
-        const month = d.getMonth();
-        const year = d.getFullYear();
+        const month = d.getUTCMonth();
+        const year = d.getUTCFullYear();
         if (dateRange === 'abril') {
           matchDate = (month === 3 && year === 2026);
         } else if (dateRange === 'mayo') {
@@ -362,12 +362,12 @@ export default function Dashboard() {
       const d = new Date(curr.fecha);
       
       // Calculate week number
-      const oneJan = new Date(d.getFullYear(), 0, 1);
+      const oneJan = new Date(d.getUTCFullYear(), 0, 1);
       const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
       const weekNum = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
       
       const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const label = `Sem ${weekNum} (${monthNames[d.getMonth()]})`;
+      const label = `Sem ${weekNum} (${monthNames[d.getUTCMonth()]})`;
       
       if (!map[weekNum]) {
         map[weekNum] = { weekNum, label, Operaciones: 0 };
