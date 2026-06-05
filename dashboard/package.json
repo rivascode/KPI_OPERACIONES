@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "gh-pages -d out -t true"
+    "deploy": "gh-pages -d out --dotfiles"
   },
   "dependencies": {
     "date-fns": "^4.4.0",
