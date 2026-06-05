@@ -318,14 +318,28 @@ export default function Dashboard() {
 
   // Chart aggregation: Timeline (monthly)
   const timelineChartData = useMemo(() => {
-    const map = filteredData.reduce((acc, curr) => {
-      if(!curr.fecha) return acc;
+    const map = {};
+    filteredData.forEach(curr => {
+      if (!curr.fecha) return;
       const d = new Date(curr.fecha);
-      const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      acc[month] = (acc[month] || 0) + 1;
-      return acc;
-    }, {});
-    return Object.keys(map).sort().map(k => ({ date: k, Operaciones: map[k] }));
+      
+      // Calculate week number
+      const oneJan = new Date(d.getFullYear(), 0, 1);
+      const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
+      const weekNum = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
+      
+      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const label = `Sem ${weekNum} (${monthNames[d.getMonth()]})`;
+      
+      if (!map[weekNum]) {
+        map[weekNum] = { weekNum, label, Operaciones: 0 };
+      }
+      map[weekNum].Operaciones++;
+    });
+    
+    return Object.values(map)
+      .sort((a, b) => a.weekNum - b.weekNum)
+      .map(item => ({ date: item.label, Operaciones: item.Operaciones }));
   }, [filteredData]);
 
   // Chart aggregation: Operators (Top 15)
@@ -629,11 +643,11 @@ export default function Dashboard() {
                   type="category" 
                   stroke="var(--text-muted)" 
                   fontSize={10} 
-                  width={140}
-                  tickFormatter={(val) => val.length > 20 ? `${val.substring(0, 18)}...` : val}
+                  width={180}
+                  tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val}
                 />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
-                <Legend iconSize={10} iconType="circle" wrapperStyle={{fontSize: 12}} />
+                <Legend verticalAlign="top" height={36} iconSize={10} iconType="circle" wrapperStyle={{fontSize: 12, marginBottom: '10px'}} />
                 <Bar dataKey="Matrices" fill="#06b6d4" stackId="a" radius={[0, 0, 0, 0]} barSize={16} />
                 <Bar dataKey="VGM" fill="#10b981" stackId="a" radius={[0, 8, 8, 0]} barSize={16} />
               </BarChart>
@@ -656,19 +670,13 @@ export default function Dashboard() {
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={timelineChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradientBlue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--accent-blue)" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="var(--accent-blue)" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+              <BarChart data={timelineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
-                <Area type="monotone" dataKey="Operaciones" stroke="var(--accent-blue)" strokeWidth={2} fillOpacity={1} fill="url(#gradientBlue)" />
-              </AreaChart>
+                <Bar dataKey="Operaciones" fill="var(--accent-blue)" radius={[6, 6, 0, 0]} barSize={22} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -773,8 +781,8 @@ export default function Dashboard() {
                   type="category" 
                   stroke="var(--text-muted)" 
                   fontSize={10}
-                  width={140}
-                  tickFormatter={(val) => val.length > 22 ? `${val.substring(0, 19)}...` : val} 
+                  width={180}
+                  tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-purple)" radius={[0, 6, 6, 0]} barSize={16}>
@@ -807,8 +815,8 @@ export default function Dashboard() {
                   type="category" 
                   stroke="var(--text-muted)" 
                   fontSize={10}
-                  width={140}
-                  tickFormatter={(val) => val.length > 22 ? `${val.substring(0, 19)}...` : val} 
+                  width={180}
+                  tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-emerald)" radius={[0, 6, 6, 0]} barSize={16}>
@@ -867,7 +875,7 @@ export default function Dashboard() {
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
-                <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)' }} />
+                <Legend verticalAlign="top" height={36} iconSize={10} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: '10px' }} />
                 {collaboratorChartData.keys.map((key, index) => (
                   <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
                 ))}
@@ -887,8 +895,8 @@ export default function Dashboard() {
                   type="category" 
                   stroke="var(--text-muted)" 
                   fontSize={10}
-                  width={160}
-                  tickFormatter={(val) => val.length > 25 ? `${val.substring(0, 22)}...` : val} 
+                  width={180}
+                  tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
                 <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
                 <Bar dataKey="total" fill="var(--accent-blue)" radius={[0, 6, 6, 0]} barSize={16}>
