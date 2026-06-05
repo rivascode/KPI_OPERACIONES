@@ -164,12 +164,24 @@ export default function Dashboard() {
     const mat = data.matrices || [];
     const vg = data.vgm || [];
     
+    // Count occurrences to sort operators by volume descending
+    const opCounts = {};
+    const countOp = (op) => {
+      if (!op) return;
+      opCounts[op] = (opCounts[op] || 0) + 1;
+    };
+    ops.forEach(o => countOp(o.operador));
+    mat.forEach(m => countOp(m.operador));
+    vg.forEach(v => countOp(v.operador));
+
+    const sortedOperadores = [...new Set([
+      ...ops.map(o => o.operador),
+      ...mat.map(m => m.operador),
+      ...vg.map(v => v.operador)
+    ])].filter(Boolean).sort((a, b) => (opCounts[b] || 0) - (opCounts[a] || 0));
+    
     return {
-      operadores: [...new Set([
-        ...ops.map(o => o.operador),
-        ...mat.map(m => m.operador),
-        ...vg.map(v => v.operador)
-      ])].filter(Boolean).sort(),
+      operadores: sortedOperadores,
       clientes: [...new Set([
         ...ops.map(o => o.cliente),
         ...mat.map(m => m.cliente),
