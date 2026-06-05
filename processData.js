@@ -160,10 +160,12 @@ async function processAllReports() {
                     const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
                     const rawColab = getVal('SECTORISTA');
                     const rawOp = getVal('OPER');
+                    const fechaEnvio = getVal('ENVIO DATOS FINALES');
+                    if (!fechaEnvio) return; // Skip if no ENVIO DATOS FINALES date
                     if (!rawColab && !rawOp) return;
                     operaciones.push({
                         origen: 'Datos Finales',
-                        fecha: parseDate(getVal('INGRESO A PUERTO') || getVal('ENVIO DATOS FINALES')),
+                        fecha: parseDate(fechaEnvio),
                         colaborador: rawColab,
                         operador: rawOp,
                         cliente: getVal('EMBARCADOR'),

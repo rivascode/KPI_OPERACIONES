@@ -202,6 +202,23 @@ export default function Dashboard() {
     };
   }, [data]);
 
+  // Count operations (unique bookings for Maritime, rows for Air/Land)
+  const totalOperationsCount = useMemo(() => {
+    const maritimoBookings = new Set(filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'MARÍTIMO').map(i => i.booking).filter(b => b && b !== 'NO DEFINIDO')).size;
+    const aereoRows = filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'AÉREO').length;
+    const terrestreRows = filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'TERRESTRE').length;
+    const otrosRows = filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'OTROS').length;
+    return maritimoBookings + aereoRows + terrestreRows + otrosRows;
+  }, [filteredData]);
+
+  const totalMaritimoContainers = useMemo(() => {
+    return filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'MARÍTIMO').length;
+  }, [filteredData]);
+
+  const uniqueMaritimoBookings = useMemo(() => {
+    return new Set(filteredData.filter(d => getShipmentGroup(d.tipoEmbarque) === 'MARÍTIMO').map(i => i.booking).filter(b => b && b !== 'NO DEFINIDO')).size;
+  }, [filteredData]);
+
   // Detailed Modal Data Categories
   const modalCategories = useMemo(() => {
     return {
@@ -540,7 +557,7 @@ export default function Dashboard() {
             <Box size={16} color="var(--accent-blue)" />
             <span>Operaciones Totales</span>
           </div>
-          <div className="kpi-value">{modalCategories.total.items.length}</div>
+          <div className="kpi-value">{totalOperationsCount}</div>
           <div className="kpi-subtitle">Ver detalles de envíos ↗</div>
         </div>
 

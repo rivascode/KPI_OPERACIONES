@@ -210,14 +210,17 @@ export default function UploadPage() {
         // 3. DATOS FINALES: Check columns
         } else if (rowKeys.includes('SECTORISTA') && rowKeys.includes('INGRESO A PUERTO') && rowKeys.includes('ENVIO DATOS FINALES')) {
           reportType = 'DATOS FINALES';
-          const ops = rows.map(r => {
+          const ops = [];
+          rows.forEach(r => {
             const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
             const rawColab = getVal('SECTORISTA');
             const rawOp = getVal('OPER');
-            return {
+            const fechaEnvio = getVal('ENVIO DATOS FINALES');
+            if (!fechaEnvio) return; // Skip if empty
+            ops.push({
               id: Math.random().toString(36).substr(2, 9),
               origen: 'Datos Finales',
-              fecha: parseDate(getVal('INGRESO A PUERTO') || getVal('ENVIO DATOS FINALES')),
+              fecha: parseDate(fechaEnvio),
               colaborador: reassignLuisEsteban(rawColab, rawOp),
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('EMBARCADOR') ? getVal('EMBARCADOR').toString().trim().toUpperCase() : 'NO DEFINIDO',
@@ -226,7 +229,7 @@ export default function UploadPage() {
               puerto: getVal('PUERTO') ? getVal('PUERTO').toString().trim().toUpperCase() : 'NO DEFINIDO',
               booking: getVal('BOOKING') ? getVal('BOOKING').toString().trim().toUpperCase() : 'NO DEFINIDO',
               estadoKPI: 'NO MEDIDO'
-            };
+            });
           });
           await db.insertBatch('operaciones', ops);
           processedCount = ops.length;
@@ -234,14 +237,17 @@ export default function UploadPage() {
         // 4. FACTURACION / BOOKING: Check columns
         } else if (rowKeys.includes('REG / CORRELATIVO') && rowKeys.includes('SECTORISTA') && rowKeys.includes('EMBARCADOR') && rowKeys.includes('BK')) {
           reportType = 'FACTURACIÓN / REPORT BOOKING';
-          const ops = rows.map(r => {
+          const ops = [];
+          rows.forEach(r => {
             const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
             const rawColab = getVal('SECTORISTA');
             const rawOp = getVal('OPERADOR');
-            return {
+            const fechaEnvio = getVal('FECHA ENVIO DF');
+            if (!fechaEnvio) return; // Skip if empty
+            ops.push({
               id: Math.random().toString(36).substr(2, 9),
               origen: 'Facturacion',
-              fecha: parseDate(getVal('FECHA ENVIO DF')),
+              fecha: parseDate(fechaEnvio),
               colaborador: reassignLuisEsteban(rawColab, rawOp),
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('EMBARCADOR') ? getVal('EMBARCADOR').toString().trim().toUpperCase() : 'NO DEFINIDO',
@@ -250,7 +256,7 @@ export default function UploadPage() {
               puerto: getVal('TERMINAL EMBARQUE') ? getVal('TERMINAL EMBARQUE').toString().trim().toUpperCase() : 'NO DEFINIDO',
               booking: getVal('BK') ? getVal('BK').toString().trim().toUpperCase() : 'NO DEFINIDO',
               estadoKPI: 'NO MEDIDO'
-            };
+            });
           });
           await db.insertBatch('operaciones', ops);
           processedCount = ops.length;
