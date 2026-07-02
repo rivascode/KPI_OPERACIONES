@@ -17,8 +17,10 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // El tema por defecto lo resuelve CSS (prefers-color-scheme); la preferencia
+  // manual guardada se aplica en el mount del dashboard (data-theme).
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="es" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

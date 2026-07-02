@@ -23,14 +23,31 @@ export default function UploadPage() {
 
   // Helper to normalize column names
   const cleanKey = (k) => {
-    return k ? k.toString().trim().toUpperCase().replace(/\n/g, ' ') : '';
+    // Normaliza saltos de línea y espacios múltiples de las cabeceras
+    return k ? k.toString().trim().toUpperCase().replace(/\s+/g, ' ') : '';
   };
 
   const parseDate = (d) => {
     if (!d) return null;
     if (d instanceof Date) return d.toISOString();
+    // Fechas en texto formato dd/mm/yyyy hh:mm (formato peruano de los reportes)
+    if (typeof d === 'string') {
+      const m = d.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+      if (m) {
+        return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0))).toISOString();
+      }
+    }
     const dObj = new Date(d);
     if (!isNaN(dObj)) return dObj.toISOString();
+    return null;
+  };
+
+  // Devuelve la primera fecha válida entre varios candidatos (ignora placeholders como '-')
+  const firstValidDate = (...vals) => {
+    for (const v of vals) {
+      const parsed = parseDate(v);
+      if (parsed) return parsed;
+    }
     return null;
   };
 
@@ -110,6 +127,41 @@ export default function UploadPage() {
     return cleanColab;
   };
 
+  // Detecta el mes (periodo) al que pertenece un reporte según el nombre del archivo
+  const detectPeriodo = (filename) => {
+    const p = filename.toLowerCase();
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    for (const mes of meses) {
+      if (p.includes(mes)) return mes === 'septiembre' ? 'setiembre' : mes;
+    }
+    return 'junio';
+  };
+
+  // Parser para reportes jerárquicos de puerto (Operador logístico -> detalle -> Cantidad)
+  const parseHierarchicalReport = (rows, detailKey, periodo) => {
+    const parsed = [];
+    let currentOperador = 'NO DEFINIDO';
+    rows.forEach(r => {
+      const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
+      const op = getVal('OPERADOR LOGÍSTICO') || getVal('OPERADOR LOGISTICO');
+      const detalle = getVal(detailKey);
+      const cantidad = getVal('CANTIDAD');
+      if (op) {
+        currentOperador = op.toString().trim().toUpperCase();
+        return; // fila de subtotal del grupo
+      }
+      if (!detalle || typeof cantidad !== 'number') return;
+      parsed.push({
+        id: `upload-${Date.now()}-${parsed.length}`,
+        operador: currentOperador,
+        detalle: detalle.toString().trim().toUpperCase(),
+        cantidad,
+        periodo
+      });
+    });
+    return parsed;
+  };
+
   // Drag handlers
   const handleDrag = (e) => {
     e.preventDefault();
@@ -172,16 +224,75 @@ export default function UploadPage() {
         
         let reportType = '';
         let processedCount = 0;
+        const filenameLower = file.name.toLowerCase();
+        const periodo = detectPeriodo(file.name);
+
+        // A. CORRECCIONES POST ZARPE (por nombre: comparte cabeceras con gate out)
+        if (filenameLower.includes('correcciones') && filenameLower.includes('zarpe')) {
+          reportType = `CORRECCIONES POST ZARPE (${periodo})`;
+          const items = parseHierarchicalReport(rows, 'EXPORTADOR', periodo);
+          await db.insertBatch('correccionesPostZarpe', items);
+          processedCount = items.length;
+
+        // B. TOTAL GATE OUT
+        } else if (filenameLower.includes('gate') && filenameLower.includes('out')) {
+          reportType = `TOTAL GATE OUT (${periodo})`;
+          const items = parseHierarchicalReport(rows, 'EXPORTADOR', periodo);
+          await db.insertBatch('gateOut', items);
+          processedCount = items.length;
+
+        // C. TOTAL DE CONTENEDORES
+        } else if (filenameLower.includes('contenedores')) {
+          reportType = `TOTAL DE CONTENEDORES (${periodo})`;
+          const items = parseHierarchicalReport(rows, 'TIPO DE CONTENEDOR', periodo);
+          await db.insertBatch('totalContenedores', items);
+          processedCount = items.length;
+
+        // D. CREDITO APM / MAERSK
+        } else if (filenameLower.includes('credito') || (rowKeys.includes('BOOKING') && rowKeys.includes('FECHA DE SOLICITUD'))) {
+          reportType = `CRÉDITO APM/MAERSK (${periodo})`;
+          const items = [];
+          rows.forEach(r => {
+            const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
+            const booking = getVal('BOOKING');
+            if (!booking) return;
+            let fecha = getVal('FECHA DE SOLICITUD');
+            if (typeof fecha === 'string') {
+              const m = fecha.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+              fecha = m ? new Date(Date.UTC(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0))).toISOString() : parseDate(fecha);
+            } else if (fecha instanceof Date) {
+              // Excel interpreta como mm/dd las celdas con día <= 12; el texto
+              // original era dd/mm, así que se intercambian mes y día.
+              fecha = new Date(Date.UTC(
+                fecha.getFullYear(),
+                fecha.getDate() - 1,
+                fecha.getMonth() + 1,
+                fecha.getHours(),
+                fecha.getMinutes()
+              )).toISOString();
+            } else {
+              fecha = parseDate(fecha);
+            }
+            items.push({
+              id: `upload-cred-${Date.now()}-${items.length}`,
+              booking: booking.toString().trim().toUpperCase(),
+              cliente: getVal('CLIENTE') ? getVal('CLIENTE').toString().trim().toUpperCase() : 'NO DEFINIDO',
+              fecha,
+              periodo
+            });
+          });
+          await db.insertBatch('creditoApm', items);
+          processedCount = items.length;
 
         // 1. MATRICES: Check columns
-        if (rowKeys.includes('BOOKING') && rowKeys.includes('STATUS BL') && rowKeys.includes('M. PRELIMINAR   ') || rowKeys.includes('M. FINAL ')) {
+        } else if (rowKeys.includes('BOOKING') && rowKeys.includes('STATUS BL') && rowKeys.includes('M. PRELIMINAR   ') || rowKeys.includes('M. FINAL ')) {
           reportType = 'CONTROL DE MATRICES';
           const items = rows.filter(r => r[Object.keys(r).find(k => cleanKey(k) === 'BOOKING')]).map(r => {
             const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
             return {
               booking: getVal('BOOKING').toString().trim().toUpperCase(),
               usuario: getVal('USUARIO') ? getVal('USUARIO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-              fecha: parseDate(getVal('M. PREL     FECHA- HORA') || getVal('M. FINAL \nFECHA-HORA') || getVal('FECHA ENVIO DF') || getVal('FECHA INGRESO A PUERTO')),
+              fecha: firstValidDate(getVal('M. PREL FECHA- HORA'), getVal('M. FINAL FECHA-HORA'), getVal('FECHA ENVIO DF'), getVal('FECHA INGRESO A PUERTO')),
               puerto: getVal('PUERTO') ? getVal('PUERTO').toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('CLIENTE ') ? getVal('CLIENTE ').toString().trim().toUpperCase() : (getVal('CLIENTE') ? getVal('CLIENTE').toString().trim().toUpperCase() : 'NO DEFINIDO'),
               operador: getVal('OPERADOR') ? getVal('OPERADOR').toString().trim().toUpperCase() : 'NO DEFINIDO'
@@ -198,7 +309,7 @@ export default function UploadPage() {
             return {
               booking: getVal('BOOKING').toString().trim().toUpperCase(),
               usuario: getVal('USUARIO') ? getVal('USUARIO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-              fecha: parseDate(getVal('V. PREL     FECHA- HORA') || getVal('V. FINAL \nFECHA-HORA')),
+              fecha: firstValidDate(getVal('V. PREL FECHA- HORA'), getVal('V. FINAL FECHA-HORA')),
               puerto: getVal('PUERTO') ? getVal('PUERTO').toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('CLIENTE ') ? getVal('CLIENTE ').toString().trim().toUpperCase() : (getVal('CLIENTE') ? getVal('CLIENTE').toString().trim().toUpperCase() : 'NO DEFINIDO'),
               operador: getVal('OPERADOR') ? getVal('OPERADOR').toString().trim().toUpperCase() : 'NO DEFINIDO'
@@ -364,6 +475,10 @@ export default function UploadPage() {
         await db.clearStore('incidencias');
         await db.clearStore('matrices');
         await db.clearStore('vgm');
+        await db.clearStore('correccionesPostZarpe');
+        await db.clearStore('creditoApm');
+        await db.clearStore('totalContenedores');
+        await db.clearStore('gateOut');
         await db.seedIfEmpty();
         alert('Base de datos restablecida correctamente.');
       } catch (e) {
@@ -442,7 +557,7 @@ export default function UploadPage() {
         <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>Arrastra tu archivo Excel aquí</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>O haz clic para explorar en tu computadora</p>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '0.3rem 0.6rem', borderRadius: '6px' }}>
-          Formatos soportados: Matrices, VGM, Datos Finales, Facturación, Incidencias, Aéreo, Terrestre
+          Formatos soportados: Matrices, VGM, Datos Finales, Facturación, Incidencias, Aéreo, Terrestre, Correcciones Post Zarpe, Crédito APM/Maersk, Total Contenedores, Gate Out
         </span>
       </div>
 

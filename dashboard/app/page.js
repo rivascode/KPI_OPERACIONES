@@ -1,15 +1,45 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, LabelList
 } from 'recharts';
-import { 
-  TrendingUp, AlertCircle, CheckCircle2, Box, Ship, Plane, Truck, X, Eye, FileText, Landmark, FileSpreadsheet, Upload
+import {
+  TrendingUp, AlertCircle, CheckCircle2, Box, Ship, Plane, Truck, X, Eye, FileText, Landmark, FileSpreadsheet,
+  Undo2, CreditCard, Container, PackageCheck, Download, Moon, Sun, CalendarDays
 } from 'lucide-react';
 import { KPIDatabase } from '../lib/db';
+
+// ============================================================
+// PERIODO ACTIVO: el dashboard muestra estáticamente este mes.
+// Al publicar un mes nuevo: subir los reportes a reportes/<mes>/,
+// correr `node processData.js` y actualizar esta constante.
+// ============================================================
+const CURRENT_PERIOD = { value: 'junio', label: 'Junio 2026', month: 5, year: 2026 };
+
+// Devuelve true si la fecha ISO cae dentro del periodo activo
+const matchesMonth = (fechaIso) => {
+  if (!fechaIso) return true;
+  const d = new Date(fechaIso);
+  return d.getUTCMonth() === CURRENT_PERIOD.month && d.getUTCFullYear() === CURRENT_PERIOD.year;
+};
+
+// Estilo compartido de tooltips (sigue el tema claro/oscuro)
+const TOOLTIP_STYLE = {
+  background: 'var(--card-solid)',
+  border: '1px solid var(--card-border)',
+  borderRadius: '10px',
+  color: 'var(--text-main)'
+};
+
+// Comparación flexible de nombres (los reportes de puerto abrevian razones sociales)
+const looseNameMatch = (a, b) => {
+  if (!a || !b) return false;
+  const x = a.toString().trim().toUpperCase();
+  const y = b.toString().trim().toUpperCase();
+  return x === y || x.includes(y) || y.includes(x);
+};
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
 const SUB_COLORS = ['#3b82f6', '#10b981', '#f59e0b'];
@@ -17,11 +47,14 @@ const DRY_REEFER_COLORS = ['#8b5cf6', '#ef4444'];
 const MATRICES_VGM_COLORS = ['#06b6d4', '#10b981'];
 
 export default function Dashboard() {
-  const [data, setData] = useState({ operaciones: [], incidencias: [], matrices: [], vgm: [] });
+  const [data, setData] = useState({
+    operaciones: [], incidencias: [], matrices: [], vgm: [],
+    correccionesPostZarpe: [], creditoApm: [], totalContenedores: [], gateOut: []
+  });
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState('light');
 
-  // Filters
-  const [dateRange, setDateRange] = useState('all');
+  // Filters (el mes es fijo: CURRENT_PERIOD)
   const [operador, setOperador] = useState('all');
   const [cliente, setCliente] = useState('all');
   const [colaborador, setColaborador] = useState('all');
@@ -34,6 +67,22 @@ export default function Dashboard() {
   const [selectedColabForChart, setSelectedColabForChart] = useState('all');
 
   useEffect(() => {
+    // Tema inicial: preferencia guardada del usuario, o la del sistema (que ya aplica el CSS)
+    let saved = null;
+    try { saved = localStorage.getItem('kpi_theme'); } catch (e) { /* almacenamiento no disponible */ }
+    const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (saved) document.documentElement.setAttribute('data-theme', saved);
+    setTheme(saved || system);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('kpi_theme', next); } catch (e) { /* almacenamiento no disponible */ }
+  };
+
+  useEffect(() => {
     document.title = "KPI Control Operaciones";
     const initDb = async () => {
       try {
@@ -44,7 +93,11 @@ export default function Dashboard() {
         const incidencias = await kpiDb.getAll('incidencias');
         const matrices = await kpiDb.getAll('matrices');
         const vgm = await kpiDb.getAll('vgm');
-        setData({ operaciones, incidencias, matrices, vgm });
+        const correccionesPostZarpe = await kpiDb.getAll('correccionesPostZarpe');
+        const creditoApm = await kpiDb.getAll('creditoApm');
+        const totalContenedores = await kpiDb.getAll('totalContenedores');
+        const gateOut = await kpiDb.getAll('gateOut');
+        setData({ operaciones, incidencias, matrices, vgm, correccionesPostZarpe, creditoApm, totalContenedores, gateOut });
       } catch (err) {
         console.error('Error loading database, falling back to JSON:', err);
         try {
@@ -83,21 +136,10 @@ export default function Dashboard() {
       
       const matchPuerto = puerto === 'all' || o.puerto === puerto;
       const matchSede = sede === 'all' || o.sede === sede;
-      
-      let matchDate = true;
-      if (dateRange !== 'all' && o.fecha) {
-        const d = new Date(o.fecha);
-        const month = d.getUTCMonth(); // 3 = Abril, 4 = Mayo
-        const year = d.getUTCFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
-      }
+      const matchDate = matchesMonth(o.fecha);
       return matchOperador && matchCliente && matchColaborador && matchTipo && matchPuerto && matchSede && matchDate;
     });
-  }, [data, operador, cliente, colaborador, tipoEmbarque, puerto, sede, dateRange]);
+  }, [data, operador, cliente, colaborador, tipoEmbarque, puerto, sede]);
 
   // Filtered Matrices (from CONTROL DE MATRICES.xlsx)
   const filteredMatrices = useMemo(() => {
@@ -106,21 +148,10 @@ export default function Dashboard() {
       const matchCliente = cliente === 'all' || m.cliente === cliente;
       const matchColaborador = colaborador === 'all' || m.usuario === colaborador;
       const matchPuerto = puerto === 'all' || m.puerto === puerto;
-      
-      let matchDate = true;
-      if (dateRange !== 'all' && m.fecha) {
-        const d = new Date(m.fecha);
-        const month = d.getUTCMonth();
-        const year = d.getUTCFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
-      }
+      const matchDate = matchesMonth(m.fecha);
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
-  }, [data, operador, cliente, colaborador, puerto, dateRange]);
+  }, [data, operador, cliente, colaborador, puerto]);
 
   // Filtered VGM (from CONTROL DE VGM.xlsx)
   const filteredVgm = useMemo(() => {
@@ -129,42 +160,75 @@ export default function Dashboard() {
       const matchCliente = cliente === 'all' || v.cliente === cliente;
       const matchColaborador = colaborador === 'all' || v.usuario === colaborador;
       const matchPuerto = puerto === 'all' || v.puerto === puerto;
-      
-      let matchDate = true;
-      if (dateRange !== 'all' && v.fecha) {
-        const d = new Date(v.fecha);
-        const month = d.getUTCMonth();
-        const year = d.getUTCFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
-      }
+      const matchDate = matchesMonth(v.fecha);
       return matchOperador && matchCliente && matchColaborador && matchPuerto && matchDate;
     });
-  }, [data, operador, cliente, colaborador, puerto, dateRange]);
+  }, [data, operador, cliente, colaborador, puerto]);
 
   // Filtered Incidents
   const filteredIncidents = useMemo(() => {
     return (data.incidencias || []).filter(i => {
       const matchOperador = operador === 'all' || i.operador === operador;
       const matchCliente = cliente === 'all' || i.cliente === cliente;
-      
-      let matchDate = true;
-      if (dateRange !== 'all' && i.fecha) {
-        const d = new Date(i.fecha);
-        const month = d.getUTCMonth();
-        const year = d.getUTCFullYear();
-        if (dateRange === 'abril') {
-          matchDate = (month === 3 && year === 2026);
-        } else if (dateRange === 'mayo') {
-          matchDate = (month === 4 && year === 2026);
-        }
-      }
+      const matchDate = matchesMonth(i.fecha);
       return matchOperador && matchCliente && matchDate;
     });
-  }, [data, operador, cliente, dateRange]);
+  }, [data, operador, cliente]);
+
+  // --- Reportes mensuales de puerto (Junio 2026+) ---
+  // Estos reportes vienen agregados por mes ('periodo'), sin fecha por fila,
+  // salvo Crédito APM/Maersk que sí tiene fecha de solicitud.
+  const matchesPeriodo = (row) => row.periodo === CURRENT_PERIOD.value;
+
+  // Ordena por volumen del operador (desc) y luego por cantidad (desc)
+  const sortHierarchy = (rows) => {
+    const totals = {};
+    rows.forEach(r => { totals[r.operador] = (totals[r.operador] || 0) + (r.cantidad || 0); });
+    return [...rows].sort((a, b) =>
+      (totals[b.operador] - totals[a.operador])
+      || a.operador.localeCompare(b.operador)
+      || (b.cantidad - a.cantidad)
+    );
+  };
+
+  // Correcciones Post Zarpe (operador -> exportador -> cantidad)
+  const filteredCorrecciones = useMemo(() => {
+    return sortHierarchy((data.correccionesPostZarpe || []).filter(r =>
+      matchesPeriodo(r)
+      && (operador === 'all' || looseNameMatch(r.operador, operador))
+      && (cliente === 'all' || looseNameMatch(r.detalle, cliente))
+    ));
+  }, [data, operador, cliente]);
+
+  // Crédito APM / Maersk (solicitudes de crédito por booking)
+  const filteredCredito = useMemo(() => {
+    return (data.creditoApm || []).filter(r =>
+      matchesMonth(r.fecha)
+      && (cliente === 'all' || looseNameMatch(r.cliente, cliente))
+    ).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  }, [data, cliente]);
+
+  // Total de Contenedores (operador -> tipo de contenedor -> cantidad)
+  const filteredContenedores = useMemo(() => {
+    return sortHierarchy((data.totalContenedores || []).filter(r =>
+      matchesPeriodo(r)
+      && (operador === 'all' || looseNameMatch(r.operador, operador))
+    ));
+  }, [data, operador]);
+
+  // Total Gate Out (operador -> exportador -> cantidad)
+  const filteredGateOut = useMemo(() => {
+    return sortHierarchy((data.gateOut || []).filter(r =>
+      matchesPeriodo(r)
+      && (operador === 'all' || looseNameMatch(r.operador, operador))
+      && (cliente === 'all' || looseNameMatch(r.detalle, cliente))
+    ));
+  }, [data, operador, cliente]);
+
+  const sumCantidad = (rows) => rows.reduce((acc, r) => acc + (r.cantidad || 0), 0);
+  const totalCorrecciones = useMemo(() => sumCantidad(filteredCorrecciones), [filteredCorrecciones]);
+  const totalContenedoresCount = useMemo(() => sumCantidad(filteredContenedores), [filteredContenedores]);
+  const totalGateOutCount = useMemo(() => sumCantidad(filteredGateOut), [filteredGateOut]);
 
   // Filter unique lists
   const filterOptions = useMemo(() => {
@@ -270,9 +334,36 @@ export default function Dashboard() {
         title: 'Reporte de VGM Ingresados',
         description: 'Detalle de registros del archivo de control de VGM (Verified Gross Mass).',
         items: filteredVgm
+      },
+      correcciones: {
+        title: 'Correcciones Post Zarpe',
+        description: 'Correcciones solicitadas después del zarpe de la nave, por operador logístico y exportador.',
+        tableType: 'hierarchy',
+        detailLabel: 'Exportador',
+        items: filteredCorrecciones
+      },
+      credito: {
+        title: 'Crédito APM / Maersk',
+        description: 'Solicitudes de crédito registradas ante APM Terminals / Maersk, por booking y cliente.',
+        tableType: 'credito',
+        items: filteredCredito
+      },
+      contenedores: {
+        title: 'Total de Contenedores',
+        description: 'Contenedores movilizados por operador logístico y tipo de contenedor (REEFER, DRY, otros).',
+        tableType: 'hierarchy',
+        detailLabel: 'Tipo de Contenedor',
+        items: filteredContenedores
+      },
+      gateout: {
+        title: 'Total de Gate Out',
+        description: 'Salidas de contenedores (Gate Out) por operador logístico y exportador.',
+        tableType: 'hierarchy',
+        detailLabel: 'Exportador',
+        items: filteredGateOut
       }
     };
-  }, [filteredData, filteredIncidents, filteredMatrices, filteredVgm]);
+  }, [filteredData, filteredIncidents, filteredMatrices, filteredVgm, filteredCorrecciones, filteredCredito, filteredContenedores, filteredGateOut]);
 
   // Chart aggregation: Main Shipment Type (Only Maritimo, Terrestre, Aereo, Otros)
   const mainTypeChartData = useMemo(() => {
@@ -361,10 +452,10 @@ export default function Dashboard() {
       if (!curr.fecha) return;
       const d = new Date(curr.fecha);
       
-      // Calculate week number
-      const oneJan = new Date(d.getUTCFullYear(), 0, 1);
+      // Calculate week number (todo en UTC para no desplazar fechas por zona horaria)
+      const oneJan = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
       const numberOfDays = Math.floor((d - oneJan) / (24 * 60 * 60 * 1000));
-      const weekNum = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
+      const weekNum = Math.ceil((d.getUTCDay() + 1 + numberOfDays) / 7);
       
       const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
       const label = `Sem ${weekNum} (${monthNames[d.getUTCMonth()]})`;
@@ -472,6 +563,11 @@ export default function Dashboard() {
     return (
       <div className="dashboard-container" style={{display:'flex', justifyContent:'center', alignItems:'center', height:'80vh'}}>
         <div style={{textAlign:'center'}}>
+          <img
+            className="loading-flag"
+            src="/KPI_OPERACIONES/logos/bandera.png"
+            alt="Cargando"
+          />
           <h2 style={{color:'var(--text-main)', marginBottom:'1rem'}}>Procesando datos logísticos...</h2>
           <p style={{color:'var(--text-muted)'}}>Consolidando métricas de Operaciones</p>
         </div>
@@ -482,40 +578,39 @@ export default function Dashboard() {
   return (
     <div className="dashboard-container">
       <header className="header">
-        <div>
-          <h1>KPI Control Operaciones</h1>
-          <p>Visualización interactiva y análisis consolidado de embarques</p>
+        <div className="header-brand">
+          <img
+            className="brand-logo"
+            src={theme === 'dark'
+              ? '/KPI_OPERACIONES/logos/chavimochic_blanco.png'
+              : '/KPI_OPERACIONES/logos/chavimochic_color.png'}
+            alt="Chavimochic Despachos Aduaneros"
+          />
+          <div>
+            <h1>KPI Control Operaciones</h1>
+            <p>Visualización interactiva y análisis consolidado de embarques</p>
+          </div>
         </div>
-        <Link href="/upload" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.6rem 1.2rem',
-          background: 'rgba(59, 130, 246, 0.1)',
-          border: '1px solid rgba(59, 130, 246, 0.3)',
-          borderRadius: '12px',
-          color: 'var(--accent-blue)',
-          fontSize: '0.9rem',
-          fontWeight: 600,
-          textDecoration: 'none',
-          transition: 'all 0.2s ease',
-          cursor: 'pointer'
-        }}>
-          <Upload size={16} /> Subir Reportes
-        </Link>
+        <div className="header-actions">
+          <span className="periodo-chip">
+            <CalendarDays size={16} /> {CURRENT_PERIOD.label}
+          </span>
+          <a className="btn-download" href="/KPI_OPERACIONES/fuente_datos.zip" download="fuente_datos.zip">
+            <Download size={16} /> Descargar Fuente de Datos
+          </a>
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            aria-label="Cambiar tema"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
       </header>
 
       {/* Filters Panel */}
       <div className="filters-panel">
-        <div className="filter-group">
-          <label>Mes</label>
-          <select value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
-            <option value="all">Todo el Histórico</option>
-            <option value="abril">Abril 2026</option>
-            <option value="mayo">Mayo 2026</option>
-          </select>
-        </div>
-
         <div className="filter-group">
           <label>Operador</label>
           <select value={operador} onChange={(e) => setOperador(e.target.value)}>
@@ -630,27 +725,63 @@ export default function Dashboard() {
           <div className="kpi-value">{modalCategories.finalizados.items.length}</div>
           <div className="kpi-subtitle">Cierres y reportes ↗</div>
         </div>
+
+        <div className="kpi-card" onClick={() => setActiveModal('correcciones')}>
+          <div className="kpi-title">
+            <Undo2 size={16} color="var(--accent-rose)" />
+            <span>Correcciones Post Zarpe</span>
+          </div>
+          <div className="kpi-value" style={{color:'var(--accent-rose)'}}>{totalCorrecciones}</div>
+          <div className="kpi-subtitle">Ver detalle por exportador ↗</div>
+        </div>
+
+        <div className="kpi-card" onClick={() => setActiveModal('credito')}>
+          <div className="kpi-title">
+            <CreditCard size={16} color="var(--accent-purple)" />
+            <span>Crédito APM / Maersk</span>
+          </div>
+          <div className="kpi-value" style={{color:'var(--accent-purple)'}}>{filteredCredito.length}</div>
+          <div className="kpi-subtitle">Ver solicitudes de crédito ↗</div>
+        </div>
+
+        <div className="kpi-card" onClick={() => setActiveModal('contenedores')}>
+          <div className="kpi-title">
+            <Container size={16} color="var(--accent-blue)" />
+            <span>Total de Contenedores</span>
+          </div>
+          <div className="kpi-value">{totalContenedoresCount}</div>
+          <div className="kpi-subtitle">Ver detalle por tipo ↗</div>
+        </div>
+
+        <div className="kpi-card" onClick={() => setActiveModal('gateout')}>
+          <div className="kpi-title">
+            <PackageCheck size={16} color="var(--accent-emerald)" />
+            <span>Total de Gate Out</span>
+          </div>
+          <div className="kpi-value" style={{color:'var(--accent-emerald)'}}>{totalGateOutCount}</div>
+          <div className="kpi-subtitle">Ver detalle de salidas ↗</div>
+        </div>
       </div>
 
       {/* Separate control charts for Matrices and VGM */}
-      <div style={{borderBottom: '1px solid var(--card-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem'}}>
-        <h2 style={{color:'var(--text-main)', fontSize:'1.3rem', fontWeight:600}}>Control de Matrices & VGM</h2>
-        <p style={{color:'var(--text-muted)', fontSize:'0.85rem'}}>Análisis del ingreso y desempeño del personal de control de matrices y VGM</p>
+      <div className="section-divider">
+        <h2>Control de Matrices & VGM</h2>
+        <p>Análisis del ingreso y desempeño del personal de control de matrices y VGM</p>
       </div>
 
       <div className="charts-row-2">
         <div className="chart-card">
           <div className="chart-header">
             <h3>Ingresos Totales (Matrices vs VGM)</h3>
-            <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Cantidad de documentos ingresados</span>
+            <span>Cantidad de documentos ingresados</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={matricesVgmTotalsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} />
                 <YAxis stroke="var(--text-muted)" fontSize={11} />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="total" fill="var(--accent-emerald)" radius={[8, 8, 0, 0]} barSize={50}>
                   {matricesVgmTotalsData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={MATRICES_VGM_COLORS[index % MATRICES_VGM_COLORS.length]} />
@@ -664,7 +795,7 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-header">
             <h3>Ingresos Realizados por Personal</h3>
-            <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Desempeño de Matrices y VGM por usuario</span>
+            <span>Desempeño de Matrices y VGM por usuario</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
@@ -673,7 +804,7 @@ export default function Dashboard() {
                 layout="vertical"
                 margin={{ top: 10, right: 10, left: 30, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} />
                 <YAxis 
                   dataKey="name" 
@@ -683,7 +814,7 @@ export default function Dashboard() {
                   width={180}
                   tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val}
                 />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Legend verticalAlign="top" height={36} iconSize={10} iconType="circle" wrapperStyle={{fontSize: 12, marginBottom: '10px'}} />
                 <Bar dataKey="Matrices" fill="#06b6d4" stackId="a" radius={[0, 0, 0, 0]} barSize={16} />
                 <Bar dataKey="VGM" fill="#10b981" stackId="a" radius={[0, 8, 8, 0]} barSize={16} />
@@ -693,9 +824,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{borderBottom: '1px solid var(--card-border)', paddingBottom: '0.75rem', marginBottom: '1.5rem'}}>
-        <h2 style={{color:'var(--text-main)', fontSize:'1.3rem', fontWeight:600}}>Distribución y Tendencia de Operaciones</h2>
-        <p style={{color:'var(--text-muted)', fontSize:'0.85rem'}}>Métricas consolidadas de transportes, operadores logísticos y volumen</p>
+      <div className="section-divider">
+        <h2>Distribución y Tendencia de Operaciones</h2>
+        <p>Métricas consolidadas de transportes, operadores logísticos y volumen</p>
       </div>
 
       {/* Row 1: 4 cards for core distributions */}
@@ -703,15 +834,15 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-header">
             <h3>Evolución de Embarques</h3>
-            <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>Histórico Mensual</span>
+            <span>Histórico Mensual</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={timelineChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={false} />
                 <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="Operaciones" fill="var(--accent-blue)" radius={[6, 6, 0, 0]} barSize={22} />
               </BarChart>
             </ResponsiveContainer>
@@ -721,27 +852,22 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-header">
             <h3>Por Tipo de Embarque</h3>
-            <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>Marítimo / Aéreo / Terrestre</span>
+            <span>Marítimo / Aéreo / Terrestre</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={mainTypeChartData}
-                  cx="50%"
-                  cy="45%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
+              <BarChart data={mainTypeChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
+                <YAxis stroke="var(--text-muted)" fontSize={10} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
+                <Bar dataKey="value" name="Operaciones" radius={[6, 6, 0, 0]} barSize={40}>
+                  <LabelList dataKey="value" position="top" fill="var(--text-main)" fontSize={11} style={{ fontWeight: 600 }} />
                   {mainTypeChartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
-                </Pie>
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
-                <Legend iconSize={8} iconType="circle" wrapperStyle={{fontSize: 11, color: 'var(--text-muted)'}} />
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -749,15 +875,15 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-header">
             <h3>Marítimo: INI vs LEX vs DT</h3>
-            <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>Tipos especiales</span>
+            <span>Tipos especiales</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={maritimeSub1Data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="total" fill="var(--accent-blue)" radius={[6, 6, 0, 0]} barSize={25}>
                   {maritimeSub1Data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={SUB_COLORS[index % SUB_COLORS.length]} />
@@ -771,7 +897,7 @@ export default function Dashboard() {
         <div className="chart-card">
           <div className="chart-header">
             <h3>Marítimo: DRY Vs REEFER</h3>
-            <span style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>Contenedores</span>
+            <span>Contenedores</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
@@ -789,7 +915,7 @@ export default function Dashboard() {
                     <Cell key={`cell-${index}`} fill={DRY_REEFER_COLORS[index % DRY_REEFER_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Legend iconSize={8} iconType="circle" wrapperStyle={{fontSize: 11, color: 'var(--text-muted)'}} />
               </PieChart>
             </ResponsiveContainer>
@@ -802,7 +928,7 @@ export default function Dashboard() {
         <div className="chart-card tall">
           <div className="chart-header">
             <h3>Top 15 Operadores Logísticos</h3>
-            <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Volumen por Operador</span>
+            <span>Volumen por Operador</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
@@ -811,7 +937,7 @@ export default function Dashboard() {
                 layout="vertical" 
                 margin={{ top: 10, right: 40, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -821,7 +947,7 @@ export default function Dashboard() {
                   width={180}
                   tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="total" fill="var(--accent-purple)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {operatorChartData.map((entry, index) => (
@@ -836,7 +962,7 @@ export default function Dashboard() {
         <div className="chart-card tall">
           <div className="chart-header">
             <h3>Top 15 Exportadores / Clientes</h3>
-            <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Volumen por Exportador</span>
+            <span>Volumen por Exportador</span>
           </div>
           <div className="chart-container">
             <ResponsiveContainer width="100%" height="100%">
@@ -845,7 +971,7 @@ export default function Dashboard() {
                 layout="vertical" 
                 margin={{ top: 10, right: 40, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -855,7 +981,7 @@ export default function Dashboard() {
                   width={180}
                   tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="total" fill="var(--accent-emerald)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {exporterChartData.map((entry, index) => (
@@ -883,19 +1009,10 @@ export default function Dashboard() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Desglosar Colaborador:</span>
-            <select 
-              value={selectedColabForChart} 
+            <select
+              className="select-control"
+              value={selectedColabForChart}
               onChange={(e) => setSelectedColabForChart(e.target.value)}
-              style={{
-                padding: '0.4rem 0.8rem',
-                background: 'rgba(8, 12, 20, 0.7)',
-                border: '1px solid var(--card-border)',
-                borderRadius: '8px',
-                color: 'var(--text-main)',
-                fontSize: '0.85rem',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
             >
               <option value="all">Ver Todos (Vista General)</option>
               {filterOptions.colaboradores.map(c => (
@@ -908,10 +1025,10 @@ export default function Dashboard() {
           {selectedColabForChart === 'all' ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={collaboratorChartData.chartData} margin={{ top: 20, right: 30, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={false} />
                 <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
                 <YAxis stroke="var(--text-muted)" fontSize={10} tick={{ fill: 'var(--text-muted)' }} />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Legend verticalAlign="top" height={36} iconSize={10} iconType="circle" wrapperStyle={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: '10px' }} />
                 {collaboratorChartData.keys.map((key, index) => (
                   <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
@@ -925,7 +1042,7 @@ export default function Dashboard() {
                 layout="vertical"
                 margin={{ top: 10, right: 45, left: 30, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={true} horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--grid-line)" vertical={true} horizontal={false} />
                 <XAxis type="number" stroke="var(--text-muted)" fontSize={11} hide={true} />
                 <YAxis 
                   dataKey="name" 
@@ -935,7 +1052,7 @@ export default function Dashboard() {
                   width={180}
                   tickFormatter={(val) => val.length > 28 ? `${val.substring(0, 25)}...` : val} 
                 />
-                <Tooltip contentStyle={{background:'#ffffff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:'8px'}} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--hover-row)' }} />
                 <Bar dataKey="total" fill="var(--accent-blue)" radius={[0, 6, 6, 0]} barSize={16}>
                   <LabelList dataKey="total" position="right" fill="var(--text-main)" fontSize={10} style={{ fontWeight: 600 }} />
                   {colabSubChartData.map((entry, index) => (
@@ -996,6 +1113,65 @@ export default function Dashboard() {
                       {modalCategories[activeModal].items.length === 0 && (
                         <tr>
                           <td colSpan={6} style={{textAlign:'center', color:'var(--text-muted)'}}>No hay incidencias que mostrar para la selección actual.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                ) : modalCategories[activeModal].tableType === 'hierarchy' ? (
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Operador Logístico</th>
+                        <th>{modalCategories[activeModal].detailLabel}</th>
+                        <th style={{textAlign:'right'}}>Cantidad</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalCategories[activeModal].items.map((row, idx) => (
+                        <tr key={idx}>
+                          <td style={{fontWeight:600}}>{row.operador}</td>
+                          <td>{row.detalle}</td>
+                          <td style={{textAlign:'right', fontWeight:600, color:'var(--accent-blue)'}}>{row.cantidad}</td>
+                        </tr>
+                      ))}
+                      {modalCategories[activeModal].items.length > 0 && (
+                        <tr style={{borderTop:'2px solid var(--card-border)'}}>
+                          <td style={{fontWeight:700}}>TOTAL</td>
+                          <td></td>
+                          <td style={{textAlign:'right', fontWeight:700, color:'var(--accent-blue)'}}>
+                            {modalCategories[activeModal].items.reduce((a, r) => a + (r.cantidad || 0), 0)}
+                          </td>
+                        </tr>
+                      )}
+                      {modalCategories[activeModal].items.length === 0 && (
+                        <tr>
+                          <td colSpan={3} style={{textAlign:'center', color:'var(--text-muted)'}}>No hay registros para la selección actual.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                ) : modalCategories[activeModal].tableType === 'credito' ? (
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Booking</th>
+                        <th>Cliente</th>
+                        <th>Fecha de Solicitud</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalCategories[activeModal].items.map((row, idx) => (
+                        <tr key={idx}>
+                          <td style={{color:'var(--text-muted)'}}>{idx + 1}</td>
+                          <td style={{fontFamily:'monospace', color:'var(--accent-purple)'}}>{row.booking}</td>
+                          <td>{row.cliente}</td>
+                          <td>{row.fecha ? new Date(row.fecha).toLocaleString('es-PE', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' }) : 'N/D'}</td>
+                        </tr>
+                      ))}
+                      {modalCategories[activeModal].items.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{textAlign:'center', color:'var(--text-muted)'}}>No hay solicitudes para la selección actual.</td>
                         </tr>
                       )}
                     </tbody>

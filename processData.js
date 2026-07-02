@@ -1,19 +1,60 @@
 const fs = require('fs');
 const xlsx = require('xlsx');
 const path = require('path');
+const AdmZip = require('adm-zip');
 
-const projectRoot = 'd:/USER/Desktop/KPI_OPERACIONES';
+const projectRoot = __dirname;
 const reportesFolder = path.join(projectRoot, 'reportes');
 
+// ============================================================
+// PERIODO ACTUAL: debe coincidir con CURRENT_PERIOD del dashboard
+// (dashboard/app/page.js). Define qué carpeta de reportes/ se
+// incluye en el zip descargable "fuente_datos.zip".
+// ============================================================
+const PERIODO_ACTUAL = 'junio';
+
 function cleanKey(k) {
-    return k ? k.toString().trim().toUpperCase().replace(/\n/g, ' ') : '';
+    // Normaliza saltos de línea y espacios múltiples: las cabeceras de los excels
+    // traen cantidades variables de espacios (ej. 'V. PREL     \nFECHA- HORA')
+    return k ? k.toString().trim().toUpperCase().replace(/\s+/g, ' ') : '';
 }
 
 function parseDate(d) {
     if (!d) return null;
     if (d instanceof Date) return d.toISOString();
+    // Handle "dd/mm/yyyy hh:mm" strings (e.g. reporte de crédito APM/Maersk)
+    if (typeof d === 'string') {
+        const m = d.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+        if (m) {
+            const [, day, month, year, hh, mm] = m;
+            return new Date(Date.UTC(+year, +month - 1, +day, +(hh || 0), +(mm || 0))).toISOString();
+        }
+    }
     const dObj = new Date(d);
     if (!isNaN(dObj)) return dObj.toISOString();
+    return null;
+}
+
+function cleanText(val, fallback = 'NO DEFINIDO') {
+    return val ? val.toString().trim().toUpperCase() : fallback;
+}
+
+// Devuelve la primera fecha válida entre varios candidatos (ignora placeholders como '-')
+function firstValidDate(...vals) {
+    for (const v of vals) {
+        const parsed = parseDate(v);
+        if (parsed) return parsed;
+    }
+    return null;
+}
+
+// Detecta el periodo (mes) al que pertenece un archivo según su ruta o nombre
+function detectPeriodo(filePath) {
+    const p = filePath.toLowerCase();
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'setiembre', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    for (const mes of meses) {
+        if (p.includes(mes)) return mes === 'septiembre' ? 'setiembre' : mes;
+    }
     return null;
 }
 
@@ -21,7 +62,7 @@ function parseDate(d) {
 function cleanSede(val) {
     if (!val) return 'NO DEFINIDA';
     const raw = val.toString().trim().toUpperCase();
-    
+
     const mapping = {
         'AEREA CALLAO / CALLAO': 'AEREA CALLAO / CALLAO',
         'CALLAO': 'AEREA CALLAO / CALLAO',
@@ -68,7 +109,7 @@ function cleanSede(val) {
         'AREQUIPA': 'AREQUIPA',
         'MOLLENDO - MATARANI': 'AREQUIPA'
     };
-    
+
     return mapping[raw] || raw;
 }
 
@@ -88,25 +129,70 @@ const operaciones = [];
 const incidencias = [];
 const matrices = [];
 const vgm = [];
+const correccionesPostZarpe = [];
+const creditoApm = [];
+const totalContenedores = [];
+const gateOut = [];
+
+// Recorre la carpeta de reportes de forma recursiva (soporta subcarpetas por mes)
+function walkReportes(dir) {
+    let found = [];
+    fs.readdirSync(dir, { withFileTypes: true }).forEach(entry => {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            found = found.concat(walkReportes(fullPath));
+        } else if ((entry.name.endsWith('.xlsx') || entry.name.endsWith('.xls')) && !entry.name.startsWith('~$')) {
+            found.push(fullPath);
+        }
+    });
+    return found;
+}
+
+// Parser genérico para reportes jerárquicos (Operador logístico -> detalle -> Cantidad)
+// Las filas con solo operador+cantidad son subtotales del grupo; las hijas llevan el detalle.
+function parseHierarchicalReport(rows, detailKey, periodo) {
+    const parsed = [];
+    let currentOperador = 'NO DEFINIDO';
+    rows.forEach(r => {
+        const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
+        const operador = getVal('OPERADOR LOGÍSTICO') || getVal('OPERADOR LOGISTICO');
+        const detalle = getVal(detailKey);
+        const cantidad = getVal('CANTIDAD');
+        if (operador) {
+            currentOperador = cleanText(operador);
+            return; // fila de subtotal del grupo
+        }
+        if (!detalle || typeof cantidad !== 'number') return;
+        parsed.push({
+            operador: currentOperador,
+            detalle: cleanText(detalle),
+            cantidad: cantidad,
+            periodo: periodo || 'junio'
+        });
+    });
+    return parsed;
+}
 
 // Main processor function
-async function processAllReports() {
+function processAllReports() {
     if (!fs.existsSync(reportesFolder)) {
         console.error(`Error: La carpeta 'reportes' no existe en ${projectRoot}`);
         return;
     }
 
-    const files = fs.readdirSync(reportesFolder).filter(f => f.endsWith('.xlsx') || f.endsWith('.xls'));
+    const files = walkReportes(reportesFolder);
     console.log(`Buscando reportes en: ${reportesFolder}`);
     console.log(`Se encontraron ${files.length} archivos para procesar.`);
 
-    files.forEach(filename => {
-        const filePath = path.join(reportesFolder, filename);
+    files.forEach(filePath => {
+        const filename = path.basename(filePath);
+        const filenameLower = filename.toLowerCase();
+        const periodo = detectPeriodo(filePath);
         try {
             const workbook = xlsx.readFile(filePath, { cellDates: true });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-            
+
             const rawRows = xlsx.utils.sheet_to_json(sheet, { header: 1 });
             let headerIdx = 0;
             for (let i = 0; i < Math.min(5, rawRows.length); i++) {
@@ -121,19 +207,62 @@ async function processAllReports() {
 
             const rowKeys = Object.keys(rows[0]).map(cleanKey);
 
+            // A. CORRECCIONES POST ZARPE (detección por nombre: comparte cabeceras con gate out)
+            if (filenameLower.includes('correcciones') && filenameLower.includes('zarpe')) {
+                console.log(`[+] Procesando '${filename}' como CORRECCIONES POST ZARPE (${periodo})`);
+                correccionesPostZarpe.push(...parseHierarchicalReport(rows, 'EXPORTADOR', periodo));
+
+            // B. TOTAL GATE OUT
+            } else if (filenameLower.includes('gate') && filenameLower.includes('out')) {
+                console.log(`[+] Procesando '${filename}' como TOTAL GATE OUT (${periodo})`);
+                gateOut.push(...parseHierarchicalReport(rows, 'EXPORTADOR', periodo));
+
+            // C. TOTAL DE CONTENEDORES
+            } else if (filenameLower.includes('contenedores')) {
+                console.log(`[+] Procesando '${filename}' como TOTAL DE CONTENEDORES (${periodo})`);
+                totalContenedores.push(...parseHierarchicalReport(rows, 'TIPO DE CONTENEDOR', periodo));
+
+            // D. CREDITO APM / MAERSK
+            } else if (filenameLower.includes('credito') || (rowKeys.includes('BOOKING') && rowKeys.includes('FECHA DE SOLICITUD'))) {
+                console.log(`[+] Procesando '${filename}' como CRÉDITO APM/MAERSK (${periodo})`);
+                rows.forEach(r => {
+                    const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
+                    const booking = getVal('BOOKING');
+                    if (!booking) return;
+                    let rawFecha = getVal('FECHA DE SOLICITUD');
+                    // Excel convirtió a fecha las celdas con día <= 12 interpretándolas
+                    // como mm/dd (locale US); el texto original era dd/mm, así que se
+                    // intercambian mes y día para recuperar la fecha real.
+                    if (rawFecha instanceof Date) {
+                        rawFecha = new Date(Date.UTC(
+                            rawFecha.getFullYear(),
+                            rawFecha.getDate() - 1,      // mes real = día interpretado
+                            rawFecha.getMonth() + 1,     // día real = mes interpretado
+                            rawFecha.getHours(),
+                            rawFecha.getMinutes()
+                        ));
+                    }
+                    creditoApm.push({
+                        booking: cleanText(booking),
+                        cliente: cleanText(getVal('CLIENTE')),
+                        fecha: parseDate(rawFecha),
+                        periodo: periodo || 'junio'
+                    });
+                });
+
             // 1. MATRICES
-            if (rowKeys.includes('BOOKING') && rowKeys.includes('STATUS BL')) {
+            } else if (rowKeys.includes('BOOKING') && rowKeys.includes('STATUS BL')) {
                 console.log(`[+] Procesando '${filename}' como CONTROL DE MATRICES`);
                 rows.forEach(r => {
                     const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
                     if (!getVal('BOOKING')) return;
                     matrices.push({
-                        booking: getVal('BOOKING').toString().trim().toUpperCase(),
-                        usuario: getVal('USUARIO') ? getVal('USUARIO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-                        fecha: parseDate(getVal('M. PREL     FECHA- HORA') || getVal('M. FINAL \nFECHA-HORA') || getVal('FECHA ENVIO DF') || getVal('FECHA INGRESO A PUERTO')),
-                        puerto: getVal('PUERTO') ? getVal('PUERTO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-                        cliente: getVal('CLIENTE ') ? getVal('CLIENTE ').toString().trim().toUpperCase() : (getVal('CLIENTE') ? getVal('CLIENTE').toString().trim().toUpperCase() : 'NO DEFINIDO'),
-                        operador: getVal('OPERADOR') ? getVal('OPERADOR').toString().trim().toUpperCase() : 'NO DEFINIDO'
+                        booking: cleanText(getVal('BOOKING')),
+                        usuario: cleanText(getVal('USUARIO')),
+                        fecha: firstValidDate(getVal('M. PREL FECHA- HORA'), getVal('M. FINAL FECHA-HORA'), getVal('FECHA ENVIO DF'), getVal('FECHA INGRESO A PUERTO')),
+                        puerto: cleanText(getVal('PUERTO')),
+                        cliente: cleanText(getVal('CLIENTE ') || getVal('CLIENTE')),
+                        operador: cleanText(getVal('OPERADOR'))
                     });
                 });
 
@@ -144,12 +273,12 @@ async function processAllReports() {
                     const getVal = (col) => r[Object.keys(r).find(k => cleanKey(k) === col)];
                     if (!getVal('BOOKING')) return;
                     vgm.push({
-                        booking: getVal('BOOKING').toString().trim().toUpperCase(),
-                        usuario: getVal('USUARIO') ? getVal('USUARIO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-                        fecha: parseDate(getVal('V. PREL     FECHA- HORA') || getVal('V. FINAL \nFECHA-HORA')),
-                        puerto: getVal('PUERTO') ? getVal('PUERTO').toString().trim().toUpperCase() : 'NO DEFINIDO',
-                        cliente: getVal('CLIENTE ') ? getVal('CLIENTE ').toString().trim().toUpperCase() : (getVal('CLIENTE') ? getVal('CLIENTE').toString().trim().toUpperCase() : 'NO DEFINIDO'),
-                        operador: getVal('OPERADOR') ? getVal('OPERADOR').toString().trim().toUpperCase() : 'NO DEFINIDO'
+                        booking: cleanText(getVal('BOOKING')),
+                        usuario: cleanText(getVal('USUARIO')),
+                        fecha: firstValidDate(getVal('V. PREL FECHA- HORA'), getVal('V. FINAL FECHA-HORA')),
+                        puerto: cleanText(getVal('PUERTO')),
+                        cliente: cleanText(getVal('CLIENTE ') || getVal('CLIENTE')),
+                        operador: cleanText(getVal('OPERADOR'))
                     });
                 });
 
@@ -207,8 +336,8 @@ async function processAllReports() {
                     if (!rawOp && !rawClient) return;
                     incidencias.push({
                         fecha: parseDate(getVal('FECHA DE INCIDENCIA') || getVal('FECHA DE  INCIDENCIA')),
-                        operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
-                        cliente: rawClient ? rawClient.toString().trim().toUpperCase() : 'NO DEFINIDO',
+                        operador: cleanText(rawOp),
+                        cliente: cleanText(rawClient),
                         booking: getVal('BOOKING'),
                         observacion: getVal('OBSERVACION DE INCIDENCIA'),
                         estado: getVal('FECHA DE RESOLUCION') ? 'Resuelto' : 'Pendiente'
@@ -267,42 +396,74 @@ async function processAllReports() {
 
     // Post-process operaciones (unificación y reasignación de Luis Esteban)
     const cleanedOperaciones = operaciones.map(o => {
-        let colab = o.colaborador ? o.colaborador.toString().trim().toUpperCase() : 'NO DEFINIDO';
+        let colab = cleanText(o.colaborador);
         const opClean = o.operador ? o.operador.toString().trim().toUpperCase() : '';
-        
+
         if (colab === 'LUIS ESTEBAN' && luisEstebanReassignmentMap[opClean]) {
             colab = luisEstebanReassignmentMap[opClean];
         }
-        
+
         return {
             id: Math.random().toString(36).substr(2, 9),
             fecha: o.fecha || new Date('2026-04-01').toISOString(),
             colaborador: colab,
-            operador: o.operador ? o.operador.toString().trim().toUpperCase() : 'NO DEFINIDO',
-            cliente: o.cliente ? o.cliente.toString().trim().toUpperCase() : 'NO DEFINIDO',
-            tipoEmbarque: o.tipoEmbarque ? o.tipoEmbarque.toString().trim().toUpperCase() : 'NO DEFINIDO',
+            operador: cleanText(o.operador),
+            cliente: cleanText(o.cliente),
+            tipoEmbarque: cleanText(o.tipoEmbarque),
             sede: cleanSede(o.sede),
-            puerto: o.puerto ? o.puerto.toString().trim().toUpperCase() : 'NO DEFINIDO',
-            booking: o.booking ? o.booking.toString().trim().toUpperCase() : 'NO DEFINIDO',
-            estadoKPI: o.estadoKPI ? o.estadoKPI.toString().trim().toUpperCase() : 'NO MEDIDO',
+            puerto: cleanText(o.puerto),
+            booking: cleanText(o.booking),
+            estadoKPI: cleanText(o.estadoKPI, 'NO MEDIDO'),
             origen: o.origen
         };
     });
 
+    // Deduplicar matrices y VGM por booking (los cortes mensuales pueden traer bookings repetidos)
+    const dedupeByBooking = (arr) => {
+        const map = new Map();
+        arr.forEach(item => map.set(item.booking, item));
+        return [...map.values()];
+    };
+
     const consolidated = {
         operaciones: cleanedOperaciones,
         incidencias: incidencias,
-        matrices: matrices,
-        vgm: vgm
+        matrices: dedupeByBooking(matrices),
+        vgm: dedupeByBooking(vgm),
+        correccionesPostZarpe: correccionesPostZarpe,
+        creditoApm: creditoApm,
+        totalContenedores: totalContenedores,
+        gateOut: gateOut
     };
 
     const targetJsonPath = path.join(projectRoot, 'dashboard', 'public', 'kpi_data.json');
     fs.writeFileSync(targetJsonPath, JSON.stringify(consolidated, null, 2));
+
+    // Version del consolidado: el dashboard la compara para resembrar IndexedDB
+    // automáticamente cuando se publica data nueva.
+    const versionPath = path.join(projectRoot, 'dashboard', 'public', 'kpi_data_version.json');
+    fs.writeFileSync(versionPath, JSON.stringify({ version: new Date().toISOString() }));
+
+    // Comprimido con los reportes fuente DEL PERIODO ACTUAL (el mes que muestra
+    // el dashboard), descargable desde el botón "Descargar Fuente de Datos".
+    const zipFiles = files.filter(f => {
+        const carpeta = path.relative(reportesFolder, f).toLowerCase().split(path.sep)[0];
+        return carpeta.includes(PERIODO_ACTUAL);
+    });
+    const zip = new AdmZip();
+    zipFiles.forEach(f => zip.addLocalFile(f));
+    const zipPath = path.join(projectRoot, 'dashboard', 'public', 'fuente_datos.zip');
+    zip.writeZip(zipPath);
+    console.log(`Fuente de datos (${PERIODO_ACTUAL}) comprimida en: ${zipPath} (${zipFiles.length} archivos)`);
     console.log(`\n🎉 Consolidación completada exitosamente!`);
-    console.log(`Total operaciones consolidación local: ${cleanedOperaciones.length}`);
-    console.log(`Total incidencias consolidación local: ${incidencias.length}`);
-    console.log(`Total matrices: ${matrices.length}`);
-    console.log(`Total VGM: ${vgm.length}`);
+    console.log(`Total operaciones: ${cleanedOperaciones.length}`);
+    console.log(`Total incidencias: ${incidencias.length}`);
+    console.log(`Total matrices: ${consolidated.matrices.length}`);
+    console.log(`Total VGM: ${consolidated.vgm.length}`);
+    console.log(`Correcciones post zarpe: ${correccionesPostZarpe.length} filas (${correccionesPostZarpe.reduce((a, b) => a + b.cantidad, 0)} correcciones)`);
+    console.log(`Crédito APM/Maersk: ${creditoApm.length} solicitudes`);
+    console.log(`Total contenedores: ${totalContenedores.length} filas (${totalContenedores.reduce((a, b) => a + b.cantidad, 0)} contenedores)`);
+    console.log(`Total gate out: ${gateOut.length} filas (${gateOut.reduce((a, b) => a + b.cantidad, 0)} gate outs)`);
     console.log(`Archivo consolidado guardado en: ${targetJsonPath}`);
 }
 
