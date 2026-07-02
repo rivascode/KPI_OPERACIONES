@@ -25,6 +25,9 @@ const matchesMonth = (fechaIso) => {
   return d.getUTCMonth() === CURRENT_PERIOD.month && d.getUTCFullYear() === CURRENT_PERIOD.year;
 };
 
+// Orden de presentación de las sedes unificadas
+const SEDE_ORDER = ['CALLAO - CHANCAY', 'PAITA', 'PISCO', 'SALAVERRY', 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA'];
+
 // Estilo compartido de tooltips (sigue el tema claro/oscuro)
 const TOOLTIP_STYLE = {
   background: 'var(--card-solid)',
@@ -270,7 +273,11 @@ export default function Dashboard() {
         ...mat.map(m => m.puerto),
         ...vg.map(v => v.puerto)
       ])].filter(Boolean).sort(),
-      sedes: [...new Set(ops.map(o => o.sede))].filter(Boolean).sort(),
+      sedes: [...new Set(ops.map(o => o.sede))].filter(Boolean).sort((a, b) => {
+        const ia = SEDE_ORDER.indexOf(a);
+        const ib = SEDE_ORDER.indexOf(b);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+      }),
     };
   }, [data]);
 

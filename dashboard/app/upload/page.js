@@ -51,59 +51,45 @@ export default function UploadPage() {
     return null;
   };
 
-  // Helper to clean Sede based on the user's mapping
+  // Sedes unificadas en 5 grupos:
+  // CALLAO - CHANCAY | PAITA | PISCO | SALAVERRY | CHIMBOTE / CHICLAYO / AREQUIPA / TACNA
+  const SEDE_GRUPOS = {
+    'CALLAO': 'CALLAO - CHANCAY',
+    'AEREA CALLAO': 'CALLAO - CHANCAY',
+    'MARITIMA CALLAO': 'CALLAO - CHANCAY',
+    'CHANCAY': 'CALLAO - CHANCAY',
+    'PAITA': 'PAITA',
+    'PISCO': 'PISCO',
+    'SALAVERRY': 'SALAVERRY',
+    'CHIMBOTE': 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA',
+    'CHICLAYO': 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA',
+    'AREQUIPA': 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA',
+    'MOLLENDO - MATARANI': 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA',
+    'TACNA': 'CHIMBOTE / CHICLAYO / AREQUIPA / TACNA'
+  };
+
+  const SEDE_EXCEPCIONES = {
+    'PAITA-DESAGUADERO': 'PAITA'
+  };
+
   const cleanSede = (val) => {
     if (!val) return 'NO DEFINIDA';
-    const str = val.toString().trim().toUpperCase();
-    
-    const mapping = {
-      'AEREA CALLAO / CALLAO': 'AEREA CALLAO / CALLAO',
-      'CALLAO': 'AEREA CALLAO / CALLAO',
-      'MARITIMA CALLAO': 'MARITIMA CALLAO',
-      'MARITIMA CALLAO / CALLAO': 'MARITIMA CALLAO',
-      'CHIMBOTE / CALLAO': 'MARITIMA CALLAO',
-      'SALAVERRY / CALLAO': 'MARITIMA CALLAO',
-      'PISCO / CALLAO': 'MARITIMA CALLAO',
-      'CHANCAY / CALLAO': 'MARITIMA CALLAO',
-      'CHICLAYO / CALLAO': 'MARITIMA CALLAO',
-      'MOLLENDO - MATARANI / CALLAO': 'MARITIMA CALLAO',
-      'PAITA / CALLAO': 'MARITIMA CALLAO',
-      'AREQUIPA / CALLAO': 'MARITIMA CALLAO',
-      'PAITA': 'PAITA',
-      'PAITA / PAITA': 'PAITA',
-      'SALAVERRY / PAITA': 'PAITA',
-      'CHICLAYO / PAITA': 'PAITA',
-      'PISCO / PAITA': 'PAITA',
-      'CHANCAY / PAITA': 'PAITA',
-      'PAITA-DESAGUADERO': 'PAITA',
-      'PISCO': 'PISCO',
-      'PISCO / PISCO': 'PISCO',
-      'MARITIMA CALLAO / PISCO': 'PISCO',
-      'TACNA / PISCO': 'PISCO',
-      'CHANCAY': 'CHANCAY',
-      'CHANCAY / CHANCAY': 'CHANCAY',
-      'CHICLAYO / CHANCAY': 'CHANCAY',
-      'MARITIMA CALLAO / CHANCAY': 'CHANCAY',
-      'CHIMBOTE / CHANCAY': 'CHANCAY',
-      'PISCO / CHANCAY': 'CHANCAY',
-      'AEREA CALLAO / CHANCAY': 'CHANCAY',
-      'PAITA / CHANCAY': 'CHANCAY',
-      'MOLLENDO - MATARANI / CHANCAY': 'CHANCAY',
-      'SALAVERRY / CHANCAY': 'CHANCAY',
-      'CHIMBOTE': 'CHIMBOTE-SALAVERRY-CHICLAYO',
-      'SALAVERRY': 'CHIMBOTE-SALAVERRY-CHICLAYO',
-      'CHICLAYO': 'CHIMBOTE-SALAVERRY-CHICLAYO',
-      'TACNA': 'TACNA',
-      'CHICLAYO / TACNA': 'TACNA',
-      'CHICLAYO-TACNA': 'TACNA',
-      'PAITA-TACNA': 'TACNA',
-      'TACNA-TACNA': 'TACNA',
-      'MOLLENDO - MATARANI-TACNA': 'TACNA',
-      'AREQUIPA': 'AREQUIPA',
-      'MOLLENDO - MATARANI': 'AREQUIPA'
-    };
-    
-    return mapping[str] || str;
+    const raw = val.toString().trim().toUpperCase();
+
+    if (SEDE_EXCEPCIONES[raw]) return SEDE_EXCEPCIONES[raw];
+    if (SEDE_GRUPOS[raw]) return SEDE_GRUPOS[raw];
+
+    // Formato "ORIGEN / SEDE": la sede efectiva es la parte final
+    const porSlash = raw.split('/').map(s => s.trim());
+    const finalSlash = porSlash[porSlash.length - 1];
+    if (SEDE_GRUPOS[finalSlash]) return SEDE_GRUPOS[finalSlash];
+
+    // Formato "ORIGEN-SEDE" (ej. SALAVERRY-TACNA)
+    const porGuion = finalSlash.split('-').map(s => s.trim());
+    const finalGuion = porGuion[porGuion.length - 1];
+    if (SEDE_GRUPOS[finalGuion]) return SEDE_GRUPOS[finalGuion];
+
+    return raw;
   };
 
   // Reassignment mapping for Luis Esteban
@@ -405,7 +391,7 @@ export default function UploadPage() {
               operador: rawOp ? rawOp.toString().trim().toUpperCase() : 'NO DEFINIDO',
               cliente: getVal('SHIPPER') ? getVal('SHIPPER').toString().trim().toUpperCase() : 'NO DEFINIDO',
               tipoEmbarque: 'AÉREO',
-              sede: 'AEREA CALLAO / CALLAO',
+              sede: 'CALLAO - CHANCAY',
               puerto: getVal('TERMINAL DE EMBARQUE') ? getVal('TERMINAL DE EMBARQUE').toString().trim().toUpperCase() : 'NO DEFINIDO',
               booking: getVal('AWB') ? getVal('AWB').toString().trim().toUpperCase() : 'NO DEFINIDO',
               estadoKPI: getVal('KPI') ? getVal('KPI').toString().trim().toUpperCase() : 'NO MEDIDO'
