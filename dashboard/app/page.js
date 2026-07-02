@@ -104,7 +104,7 @@ export default function Dashboard() {
       } catch (err) {
         console.error('Error loading database, falling back to JSON:', err);
         try {
-          const res = await fetch('/KPI_OPERACIONES/kpi_data.json');
+          const res = await fetch('/KPI_OPERACIONES/kpi_data.json', { cache: 'no-store' });
           const json = await res.json();
           setData(json);
         } catch (fetchErr) {

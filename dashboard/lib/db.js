@@ -108,7 +108,9 @@ export class KPIDatabase {
           await this.clearStore(store);
         }
       }
-      const response = await fetch('/KPI_OPERACIONES/kpi_data.json');
+      // no-store: al resembrar, traer siempre el consolidado fresco (evita
+      // sembrar datos viejos desde la caché HTTP del navegador)
+      const response = await fetch('/KPI_OPERACIONES/kpi_data.json', { cache: 'no-store' });
       if (!response.ok) throw new Error('Could not fetch default JSON data');
       const data = await response.json();
 
